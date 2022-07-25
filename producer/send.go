@@ -1,10 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
-	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/turgut-nergin/rabbit_mq/broker"
 	"github.com/turgut-nergin/rabbit_mq/config"
 )
 
@@ -15,37 +14,18 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
-
 	config := config.EnvConfig["local"]
-	url := fmt.Sprintf("amqp://%s:%s@%s:%s/", config.UserName, config.Password, config.Host, config.Port)
-	conn, err := amqp.Dial(url)
-	failOnError(err, "Failed to connect to RabbitMQ")
+	conn := broker.CreateConnection(config)
 	defer conn.Close()
 
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
+	ch := broker.CreateChannel(conn)
 	defer ch.Close()
 
-	q, err := ch.QueueDeclare(
-		"hello", // name
-		false,   // durable
-		false,   // delete when unused
-		false,   // exclusive
-		false,   // no-wait
-		nil,     // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
+	q := broker.CreateQueue(ch)
+	body := "WOW"
 
-	body := "Hello World!"
-	err = ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immediate
-		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte(body),
-		})
+	err := broker.PublishConsumer(ch, q, body)
 	failOnError(err, "Failed to publish a message")
+
 	log.Printf(" [x] Sent %s\n", body)
 }
