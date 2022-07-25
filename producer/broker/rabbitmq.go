@@ -2,7 +2,6 @@ package broker
 
 import (
 	"fmt"
-	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/turgut-nergin/rabbit_mq/config"
@@ -35,24 +34,15 @@ func CreateQueue(ch *amqp.Channel) amqp.Queue {
 	return q
 }
 
-func RegisterConsumer(ch *amqp.Channel, q amqp.Queue) <-chan amqp.Delivery {
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
-	errors.FailOnError(err, "Failed to register a consumer")
-	return msgs
-}
-
-func HandleDelivery(msgs <-chan amqp.Delivery) {
-	go func() {
-		for d := range msgs {
-			log.Printf("Received a message: %s", d.Body)
-		}
-	}()
+func PublishConsumer(ch *amqp.Channel, q amqp.Queue, body string) error {
+	err := ch.Publish(
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(body),
+		})
+	return err
 }
